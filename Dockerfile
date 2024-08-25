@@ -9,6 +9,7 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc \
     build-essential \
+    libpq-dev \
     python3-psycopg2 \
     curl && \
     apt-get clean && \
@@ -31,7 +32,6 @@ FROM python:3.12-slim AS production
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV DJANGO_SETTINGS_MODULE=multitenantsaas.settings
 
 # Install system dependencies
 RUN apt-get update && \
@@ -51,11 +51,10 @@ COPY --from=build /usr/local/lib/python3.12/site-packages /usr/local/lib/python3
 COPY --from=build /app /app
 
 # Collect static files
-RUN python manage.py collectstatic --noinput
+# RUN python manage.py collectstatic --noinput
 
-# Run database migrations : Make sure your database connections is ready 
-RUN python manage.py makemigrations && \
-    python manage.py migrate
+# Ensure that the entrypoint.sh script is executable
+RUN chmod +x /app/entrypoint.sh
 
 # Set permissions
 RUN chown -R nobody:nogroup /app
@@ -68,8 +67,11 @@ EXPOSE 8000
 EXPOSE 80
 EXPOSE 443
 
+# Run entrypoint.sh when the container launches
+ENTRYPOINT ["/app/entrypoint.sh"]
+
 # Start the application 
-CMD [ "python" "manage.py" "runserver" "0.0.0.0:8000" ]
+# CMD [ "python" "manage.py" "runserver" "0.0.0.0:8000" ]
 
 # Start the application with Gunicorn
 # CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--threads", "4", "multitenantsaas.wsgi:application"]
